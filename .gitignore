@@ -1,0 +1,10 @@
+# Dependencias y builds
+node_modules/
+web/dist/
+# Copias de seguridad de Blender
+*.blend1
+*.blend2
+# Logs y temporales
+*.log
+.DS_Store
+Thumbs.db
