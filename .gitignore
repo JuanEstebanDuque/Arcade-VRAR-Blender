@@ -8,3 +8,5 @@ web/dist/
 *.log
 .DS_Store
 Thumbs.db
+# Skill de Needle para agentes de IA (se genera solo)
+web/.agents/
