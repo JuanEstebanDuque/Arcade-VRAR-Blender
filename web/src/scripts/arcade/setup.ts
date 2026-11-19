@@ -1,6 +1,8 @@
 import { onStart, onUpdate, findObjectOfType, WebXR, XRControllerMovement, TeleportTarget, BoxCollider, Context } from "@needle-tools/engine";
 import { Mesh, Object3D } from "three";
 import { Tickets } from "./tickets";
+import { setupWheel } from "./wheel";
+import { MeshBasicMaterial } from "three";
 
 /**
  * Punto de entrada del arcade. Recorre la escena exportada desde Blender y,
@@ -28,6 +30,15 @@ export function setupArcade() {
         }
 
         setupLocomotion(ctx);
+
+        // Volúmenes de detección: invisibles pero activos
+        for (const n of ["Hoop_Trigger"]) {
+            const o = byName.get(n) as Mesh | undefined;
+            if (o) o.material = new MeshBasicMaterial({ visible: false });
+        }
+
+        // Juegos
+        setupWheel(byName);
 
         // Marcadores
         const s1 = byName.get("Scoreboard"); if (s1) Tickets.attachBoard(s1, "TUS TICKETS");

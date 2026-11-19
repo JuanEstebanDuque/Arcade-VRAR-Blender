@@ -10,3 +10,7 @@ web/dist/
 Thumbs.db
 # Skill de Needle para agentes de IA (se genera solo)
 web/.agents/
+# Archivos temporales que Claude no pudo borrar en el PC
+_to_delete*
+# Generado por Needle al correr el servidor
+web/include/
