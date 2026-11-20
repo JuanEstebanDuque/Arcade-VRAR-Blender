@@ -116,3 +116,34 @@ def bake(hi, lo, key, res=1024):
     if key == "Trofeo": bsdf.inputs["Metallic"].default_value = 0.6; bsdf.inputs["Roughness"].default_value = 0.35
     sc.render.engine = old_engine
     return imgs
+
+def rebake_keep_uv(key, target_tris, res=1024):
+    """Versión para objetos con bordes y ranuras (cubo): conserva los UV y la textura de color originales
+    (solo reducida a 1024 px) y hornea únicamente el mapa de normales. Así el color no se ensucia."""
+    hi = import_asset(key)
+    lo = make_low(hi, target_tris)
+    src_img = None
+    for n in hi.data.materials[0].node_tree.nodes:
+        if n.type == "TEX_IMAGE" and n.image: src_img = n.image; break
+    col = src_img.copy(); col.name = f"ext_{key.lower()}_color"; col.scale(res, res)
+    col.filepath_raw = os.path.join(TEX, f"ext_{key.lower()}_color.png"); col.file_format = "PNG"; col.save()
+    nrm = bpy.data.images.new(f"ext_{key.lower()}_normal", res, res, alpha=False); nrm.colorspace_settings.name = "Non-Color"
+    mat = bpy.data.materials.new(f"EXT_{key}_Horneado"); mat.use_nodes = True
+    nt = mat.node_tree; bsdf = nt.nodes["Principled BSDF"]
+    tc = nt.nodes.new("ShaderNodeTexImage"); tc.image = col; tc.location = (-600, 300)
+    tn = nt.nodes.new("ShaderNodeTexImage"); tn.image = nrm; tn.location = (-600, 0)
+    lo.data.materials.clear(); lo.data.materials.append(mat)
+    sc = bpy.context.scene; old = sc.render.engine
+    sc.render.engine = "CYCLES"; sc.cycles.device = "GPU"; sc.cycles.samples = 16
+    for o in bpy.context.selected_objects: o.select_set(False)
+    hi.select_set(True); lo.select_set(True); bpy.context.view_layer.objects.active = lo
+    nt.nodes.active = tn
+    ext = max(lo.dimensions) * 0.02
+    bpy.ops.object.bake(type="NORMAL", use_selected_to_active=True, cage_extrusion=ext, max_ray_distance=0.0, margin=16)
+    nrm.filepath_raw = os.path.join(TEX, f"ext_{key.lower()}_normal.png"); nrm.file_format = "PNG"; nrm.save()
+    sc.render.engine = old
+    nt.links.new(tc.outputs["Color"], bsdf.inputs["Base Color"])
+    nm = nt.nodes.new("ShaderNodeNormalMap"); nm.location = (-250, -150); nm.inputs["Strength"].default_value = 0.6
+    nt.links.new(tn.outputs["Color"], nm.inputs["Color"]); nt.links.new(nm.outputs["Normal"], bsdf.inputs["Normal"])
+    bsdf.inputs["Roughness"].default_value = 0.35
+    return hi, lo

@@ -44,6 +44,9 @@ export function setupArcade() {
 
         setupLocomotion(ctx);
 
+        // El tope del mostrador también choca (ahí se apoyan los premios ganados)
+        const tope = byName.get("Mostrador_Tope"); if (tope) staticCollider(tope);
+
         // Volúmenes de detección: invisibles pero activos
         for (const n of ["Hoop_Trigger"]) {
             const o = byName.get(n) as Mesh | undefined;

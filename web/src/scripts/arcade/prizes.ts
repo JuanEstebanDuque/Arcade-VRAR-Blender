@@ -1,5 +1,6 @@
-import { Behaviour, Context, PointerEventData, instantiate } from "@needle-tools/engine";
-import { Box3, Object3D, Vector3 } from "three";
+import { Behaviour, BoxCollider, Context, PointerEventData, Rigidbody, destroy } from "@needle-tools/engine";
+import { Box3, BoxGeometry, Mesh, MeshBasicMaterial, Object3D, Vector3 } from "three";
+import { Hands } from "./hand";
 import { LedDisplay } from "./screens";
 import { Tickets } from "./tickets";
 import { sfx } from "./sfx";
@@ -71,21 +72,49 @@ export class PrizeShop {
     }
 
     private copies: Object3D[] = [];
+    /** Copia SOLO lo visual del premio (sin componentes), para que no quede ligada al de la vitrina. */
+    private cloneVisual(src: Object3D): Object3D {
+        const o = (src as Mesh).isMesh ? new Mesh((src as Mesh).geometry, (src as Mesh).material) : new Object3D();
+        o.position.copy(src.position); o.quaternion.copy(src.quaternion); o.scale.copy(src.scale);
+        for (const ch of src.children) o.add(this.cloneVisual(ch));
+        return o;
+    }
+
+    /** El premio ganado aparece sobre el mostrador, con física: se apoya bien y se puede agarrar como un balón. */
     private placeCopy(name: string, i: number) {
         const p = this.prizes.get(name); if (!p) return;
-        const copy = instantiate(p.obj) as Object3D | null; if (!copy) return;
-        const cc = copy.getComponent(PrizeClick); if (cc) cc.copy = true;
-        const row = Math.floor(i / 10), col = i % 10;
-        const pos = this.slotBase.clone().add(this.slotAxis.clone().multiplyScalar(col * 0.22)).add(new Vector3(0, 0, 0));
-        pos.y += row * 0.0;
-        copy.worldPosition = pos.add(new Vector3(-row * 0.18, 0, 0));
-        copy.scale.setScalar(p.baseScale * 0.85);
-        this.copies.push(copy);
+        const visual = this.cloneVisual(p.obj);
+        visual.position.set(0, 0, 0);
+        visual.scale.setScalar(p.baseScale * 0.85);
+        this.ctx.scene.add(visual); visual.updateMatrixWorld(true);
+        const bb = new Box3().setFromObject(visual);
+        const size = bb.getSize(new Vector3()), center = bb.getCenter(new Vector3());
+        visual.removeFromParent();
+        // caja invisible que hace de cuerpo físico; lo visual va adentro, centrado
+        const body = new Mesh(new BoxGeometry(Math.max(size.x, 0.04), Math.max(size.y, 0.04), Math.max(size.z, 0.04)),
+            new MeshBasicMaterial({ visible: false }));
+        body.name = "Ganado_" + name;
+        body.add(visual); visual.position.sub(center);
+        const col = i % 6, row = Math.floor(i / 6);
+        const pos = this.slotBase.clone().add(this.slotAxis.clone().multiplyScalar(col * 0.32));
+        pos.add(new Vector3(-row * 0.22, size.y / 2 + 0.02, 0));
+        body.position.copy(pos);
+        this.ctx.scene.add(body);
+        BoxCollider.add(body, { rigidbody: true });
+        const rb = body.getComponent(Rigidbody)!;
+        rb.mass = 0.4;
+        Hands.register(body, {
+            rb,
+            desk: { pos: [0.2, -0.2, -0.5], rot: [0, 0, 0] },
+            // clic con el premio en la mano: lo lanza suavemente hacia donde apuntas
+            onUse: (_h, ray) => { const g = Hands.desk; if (g) Hands.release(g, ray.direction.clone().multiplyScalar(2.2).add(new Vector3(0, 1.2, 0))); },
+        });
+        this.copies.push(body);
     }
 
     private resetWon() {
         this.won = []; try { localStorage.removeItem(KEY); } catch { }
-        this.copies.forEach(c => c.removeFromParent()); this.copies = [];
+        this.copies.forEach(c => { Hands.items = Hands.items.filter(g => g.obj !== c); destroy(c); }); this.copies = [];
     }
 
     update() {
