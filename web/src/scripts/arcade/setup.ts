@@ -2,6 +2,16 @@ import { onStart, onUpdate, findObjectOfType, WebXR, XRControllerMovement, Telep
 import { Mesh, Object3D } from "three";
 import { Tickets } from "./tickets";
 import { setupWheel } from "./wheel";
+import { Hands } from "./hand";
+import { DesktopWalker } from "./walker";
+import { Basket } from "./basket";
+import { MoleGame } from "./mole";
+import { Gallery } from "./gallery";
+import { Fridge } from "./fridge";
+import { PrizeShop } from "./prizes";
+import { Cabinets } from "./cabinets";
+import { staticCollider } from "./util";
+import { Box3 } from "three";
 import { MeshBasicMaterial } from "three";
 
 /**
@@ -12,6 +22,9 @@ import { MeshBasicMaterial } from "three";
  *   REF_*      se oculta (referencias de escala)
  *   Scoreboard / Scoreboard_Big   marcadores de tickets
  */
+let walker: DesktopWalker | undefined;
+const games: { update(): void }[] = [];
+
 export function setupArcade() {
     onStart(ctx => {
         const byName = new Map<string, Object3D>();
@@ -19,7 +32,7 @@ export function setupArcade() {
 
         ctx.scene.traverse(o => {
             if (o.name.startsWith("REF_")) o.visible = false;
-            if (o.name.startsWith("S_") && (o as Mesh).isMesh) BoxCollider.add(o as Mesh);
+            if (o.name.startsWith("S_")) staticCollider(o);
         });
 
         // Piso: colisionador y único lugar donde se puede teletransportar
@@ -38,7 +51,19 @@ export function setupArcade() {
         }
 
         // Juegos
+        Hands.init(ctx);
         setupWheel(byName);
+        games.push(new Basket(ctx, byName), new MoleGame(ctx, byName), new Gallery(ctx, byName),
+            new Fridge(ctx, byName), new PrizeShop(ctx, byName), new Cabinets(ctx, byName));
+
+        // Caminar en PC: chocar con muebles y máquinas
+        const roots: Object3D[] = [];
+        byName.forEach((o, n) => {
+            if (/^(S_(?!Pared)|Arcade_\d$|Carreras_Moderna$|Baile_Moderna$|Rueda$|Nevera$|Maquina_Cambio$|Caneca$)/.test(n)) roots.push(o);
+        });
+        const room = floor ? new Box3().setFromObject(floor) : new Box3();
+        walker = new DesktopWalker(ctx, roots, room);
+        (window as any).__arcade = { walker, hands: Hands, games, tickets: Tickets, byName };
 
         // Marcadores
         const s1 = byName.get("Scoreboard"); if (s1) Tickets.attachBoard(s1, "TUS TICKETS");
@@ -47,12 +72,17 @@ export function setupArcade() {
         // Atajos para probar en el computador: T = +10 tickets, R = reiniciar
         window.addEventListener("keydown", e => {
             if (e.key === "t" || e.key === "T") Tickets.add(10);
-            if (e.key === "r" || e.key === "R") Tickets.reset();
+            if (e.key === "r" || e.key === "R") Tickets.reset();   // también borra los premios ganados
         });
         (window as any).tickets = Tickets;
     });
 
-    onUpdate(ctx => Tickets.update(ctx.time.deltaTime));
+    onUpdate(ctx => {
+        Tickets.update(ctx.time.deltaTime);
+        walker?.update();
+        Hands.update();
+        for (const g of games) g.update();
+    });
 }
 
 /** Solo teletransporte (sin caminar con joystick) para evitar mareo. */

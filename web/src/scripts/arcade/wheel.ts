@@ -3,6 +3,7 @@ import { Color, Material, Mesh, MeshStandardMaterial, Object3D, Vector3 } from "
 import { LedDisplay } from "./screens";
 import { Tickets } from "./tickets";
 import { sfx } from "./sfx";
+import { Desk, inXR, setCursor } from "./state";
 
 // Deben coincidir con blender_scripts/gen_textures.py (textura wheel_drum.png, de arriba hacia abajo)
 const SEGMENTS = [10, 25, 5, 50, 10, 100, 20, 5, 250, 15, 30, 500];
@@ -47,7 +48,21 @@ export class WheelGame extends Behaviour {
         for (const b of bulbs) b.material = (b.material as Material).clone();
     }
 
-    onPointerClick(_e: PointerEventData) { this.pull(); }
+    // ----- PC: arrastrar la palanca hacia abajo (o clic rápido) -----
+    private dragging = false; private dragStart = 0; private dragMoved = false; private dragVal = 0;
+    // ----- VR: agarrar la palanca con el botón de agarre y bajarla -----
+    private xrCtrl: any = null; private xrBaseY = 0; private xrVal = 0;
+
+    onPointerEnter() { if (!inXR(this.context)) setCursor(true); }
+    onPointerExit() { setCursor(false); }
+    onPointerDown(e: PointerEventData) {
+        if (e.mode !== "screen" || inXR(this.context)) return;
+        this.dragging = true; this.dragMoved = false; this.dragVal = 0;
+        this.dragStart = this.context.input.mousePosition.y;
+        Desk.captured = true;
+    }
+    /** En VR, apuntar con el rayo y apretar el gatillo también la baja. */
+    onPointerClick(e: PointerEventData) { if (e.mode !== "screen") this.pull(); }
 
     /** En VR: empujar la palanca hacia abajo con la mano o el control. */
     onUpdateXR(args: NeedleXREventArgs) {
@@ -60,6 +75,14 @@ export class WheelGame extends Behaviour {
             if (!prev) continue;
             const vy = (p.y - prev.y) / Math.max(1e-3, this.context.time.deltaTime);
             if (p.distanceTo(gp) < 0.18 && vy < -0.6) this.pull();
+            const sq = c.getButton("xr-standard-squeeze");
+            if (!this.xrCtrl && sq?.isDown && p.distanceTo(gp) < 0.22) { this.xrCtrl = c; this.xrBaseY = p.y; }
+            if (this.xrCtrl === c) {
+                if (sq?.pressed) {
+                    this.xrVal = Math.max(0, Math.min(1, (this.xrBaseY - p.y) / 0.25));
+                    if (this.xrVal >= 0.95) this.pull();
+                } else { this.xrCtrl = null; this.xrVal = 0; }
+            }
         }
     }
 
@@ -95,7 +118,20 @@ export class WheelGame extends Behaviour {
             const k = this.leverAnim / 0.6;
             this.lever = k > 0.6 ? 1 : k / 0.6;
         } else this.lever = 0;
-        this.gameObject.rotation.x = this.lever * 0.65;
+        if (this.dragging) {
+            const input = this.context.input;
+            if (input.getPointerPressed(0)) {
+                const dy = Math.abs(input.mousePosition.y - this.dragStart);
+                if (dy > 4) this.dragMoved = true;
+                this.dragVal = Math.min(1, dy / 140);
+                if (this.dragVal >= 0.95) this.pull();
+            } else {
+                this.dragging = false; Desk.captured = false;
+                if (!this.dragMoved) this.pull();
+                this.dragVal = 0;
+            }
+        }
+        this.gameObject.rotation.x = Math.max(this.lever, this.dragVal, this.xrVal) * 0.65;
 
         if (this.spinning) {
             this.t += dt;

@@ -23,6 +23,12 @@ function tone(freq: number, dur: number, type: OscillatorType = "square", vol = 
     o.start(t); o.stop(t + dur + 0.02);
 }
 
+/** Melodía 8-bit corta (notas en Hz, 0 = silencio). */
+export function chiptune(notes: number[], step = 0.14, vol = 0.035) {
+    notes.forEach((f, i) => { if (f) tone(f, step * 0.9, "square", vol, undefined, i * step); });
+    return notes.length * step;
+}
+
 export const sfx = {
     ticket: () => tone(1320, 0.06, "square", 0.05),
     win: () => { [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.12, "square", 0.07, undefined, i * 0.09)); },

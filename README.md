@@ -6,6 +6,7 @@ Arcade ochentero en Realidad Virtual hecho con Blender + Needle Engine (WebXR).
 - `Arcade.blend`: escena en Blender (1 unidad = 1 m). Al guardar (Ctrl+S) se exporta sola a `web/assets/scene.glb`.
 - `blender_scripts/build_scene.py`: genera **toda** la escena desde cero. Usa `lib.py` (utilidades de modelado). OJO: borra lo que haya en la escena antes de construir.
 - `blender_scripts/gen_textures.py`: genera todas las texturas originales de `textures/` (personajes, pósters, alfombra, ruleta, dianas, etc.). Se corre con Python + Pillow.
+- `blender_scripts/build_scene_v1_boceto.py`: versión inicial (boceto) de la escena, para comparar el antes y el después.
 - `blender_scripts/render_previews.py`: renders de revisión que quedan en `renders/`.
 - `textures/`: texturas originales (sin derechos de terceros).
 - `web/`: proyecto Needle Engine. La lógica está en `web/src/scripts/arcade/`.
@@ -30,6 +31,8 @@ Arcade ochentero en Realidad Virtual hecho con Blender + Needle Engine (WebXR).
 - En el Quest: misma red WiFi, abrir `https://<IP-del-PC>:3000` en el navegador del Quest y aceptar el aviso.
 
 ## Estado
-- [x] Escena detallada, sistema de tickets persistente, teletransporte, Rueda Cósmica
-- [ ] Topo, basket, galería de tiro, nevera, canje de premios
+- [x] Escena detallada, sistema de tickets persistente, teletransporte
+- [x] Rueda Cósmica (palanca arrastrable), topo, galería de tiro, nevera, canje de premios, maquinitas jugables
+- [x] Caminar en PC (WASD + arrastrar para mirar) y agarrar/usar/soltar en PC y VR
+- [ ] Ajustar el lanzamiento del balón en el basket
 - [ ] Optimización (unir mallas estáticas + luz horneada) para 72 FPS en Quest
