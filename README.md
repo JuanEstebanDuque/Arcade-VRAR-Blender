@@ -7,6 +7,8 @@ Arcade ochentero en Realidad Virtual hecho con Blender + Needle Engine (WebXR).
 - `blender_scripts/build_scene.py`: genera **toda** la escena desde cero. Usa `lib.py` (utilidades de modelado). OJO: borra lo que haya en la escena antes de construir.
 - `blender_scripts/gen_textures.py`: genera todas las texturas originales de `textures/` (personajes, pósters, alfombra, ruleta, dianas, etc.). Se corre con Python + Pillow.
 - `blender_scripts/build_scene_v1_boceto.py`: versión inicial (boceto) de la escena, para comparar el antes y el después.
+- `blender_scripts/optimize.py`: une las mallas estáticas y marca qué se hornea. Para regenerar la versión optimizada en Blender: `LOWPOLY = True`, correr `build_scene.py`, luego `optimize.py` y hornear el lightmap desde el panel de Needle.
+- `Arcade_sin_optimizar.blend`: copia de la escena con detalle antes de optimizar.
 - `blender_scripts/render_previews.py`: renders de revisión que quedan en `renders/`.
 - `textures/`: texturas originales (sin derechos de terceros).
 - `web/`: proyecto Needle Engine. La lógica está en `web/src/scripts/arcade/`.
@@ -35,4 +37,4 @@ Arcade ochentero en Realidad Virtual hecho con Blender + Needle Engine (WebXR).
 - [x] Rueda Cósmica (palanca arrastrable), topo, galería de tiro, nevera, canje de premios, maquinitas jugables
 - [x] Caminar en PC (WASD + arrastrar para mirar) y agarrar/usar/soltar en PC y VR
 - [ ] Ajustar el lanzamiento del balón en el basket
-- [ ] Optimización (unir mallas estáticas + luz horneada) para 72 FPS en Quest
+- [x] Optimización: modo low-poly, mallas estáticas unidas y luz horneada (lightmap 2048). Ver `renders/optimizacion/`

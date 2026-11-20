@@ -5,6 +5,8 @@ from mathutils import Vector, Matrix, Euler
 PROJECT = os.path.dirname(bpy.data.filepath)
 TEX = os.path.join(PROJECT, "textures")
 R = math.radians
+# Modo optimizado: menos segmentos en cilindros, esferas, biseles, tubos y textos
+LOWPOLY = globals().get("LOWPOLY", False)
 
 # ---------------- colecciones ----------------
 def coll(name, parent=None):
@@ -107,7 +109,7 @@ def box(name, size, loc, m, col, rot=(0, 0, 0), parent=None, bevel=0.0, tile=Non
                 if f.normal[ax] * sg > 0.9: f.material_index = mats.index(fm)
     _box_uv(bm, size, tile)
     if bevel > 0:
-        bmesh.ops.bevel(bm, geom=bm.edges[:], offset=bevel, segments=2, affect="EDGES", profile=0.5)
+        bmesh.ops.bevel(bm, geom=bm.edges[:], offset=bevel, segments=1 if LOWPOLY else 2, affect="EDGES", profile=0.5)
     return _finish(name, bm, mats, col, loc, rot, parent)
 
 def plane(name, w, h, loc, m, col, rot=(90, 0, 0), parent=None):
@@ -119,6 +121,7 @@ def plane(name, w, h, loc, m, col, rot=(90, 0, 0), parent=None):
     return _finish(name, bm, [m], col, loc, rot, parent)
 
 def cyl(name, r, depth, loc, m, col, rot=(0, 0, 0), verts=24, parent=None, r2=None, cap_mat=None, smooth=True):
+    if LOWPOLY and verts > 4: verts = max(8, verts // 2)
     bm = bmesh.new(); bm.loops.layers.uv.verify()
     bmesh.ops.create_cone(bm, cap_ends=True, segments=verts, radius1=r, radius2=r if r2 is None else r2, depth=depth, calc_uvs=True)
     mats = [m]
@@ -132,6 +135,7 @@ def cyl(name, r, depth, loc, m, col, rot=(0, 0, 0), verts=24, parent=None, r2=No
     return _finish(name, bm, mats, col, loc, rot, parent)
 
 def sphere(name, r, loc, m, col, parent=None, seg=24, rings=12, scale=(1, 1, 1), rot=(0, 0, 0)):
+    if LOWPOLY: seg, rings = max(8, seg // 2), max(5, rings // 2)
     bm = bmesh.new(); bm.loops.layers.uv.verify()
     bmesh.ops.create_uvsphere(bm, u_segments=seg, v_segments=rings, radius=r, calc_uvs=True)
     bmesh.ops.scale(bm, vec=Vector(scale), verts=bm.verts)
@@ -139,6 +143,7 @@ def sphere(name, r, loc, m, col, parent=None, seg=24, rings=12, scale=(1, 1, 1),
     return _finish(name, bm, [m], col, loc, rot, parent)
 
 def torus(name, R1, r, loc, m, col, rot=(0, 0, 0), parent=None, seg=32, mseg=10, arc=360):
+    if LOWPOLY: seg, mseg = max(12, seg // 2), max(4, mseg // 2)
     bm = bmesh.new(); uv = bm.loops.layers.uv.verify()
     full = arc >= 360
     nU = seg if full else seg + 1
@@ -164,7 +169,7 @@ def tube(name, pts, r, m, col, parent=None, loc=(0, 0, 0), cyclic=False, rot=(0,
     sp = cu.splines.new("POLY"); sp.points.add(len(pts) - 1)
     for p, q in zip(sp.points, pts): p.co = (*q, 1)
     sp.use_cyclic_u = cyclic
-    cu.bevel_depth = r; cu.bevel_resolution = 2; cu.use_fill_caps = True
+    cu.bevel_depth = r; cu.bevel_resolution = 0 if LOWPOLY else 2; cu.use_fill_caps = True
     tmp = bpy.data.objects.new(name + "_tmp", cu); col.objects.link(tmp)
     dg = bpy.context.evaluated_depsgraph_get(); ev = tmp.evaluated_get(dg)
     me = bpy.data.meshes.new_from_object(ev); me.materials.clear(); me.materials.append(m)
@@ -207,6 +212,7 @@ def wire_from(o, thickness=0.006):
 def text_mesh(name, body, loc, size, m, col, rot=(90, 0, 0), extrude=0.01, parent=None, align="CENTER"):
     cu = bpy.data.curves.new(name, "FONT"); cu.body = body; cu.size = size; cu.extrude = extrude
     cu.align_x = align; cu.align_y = "CENTER"
+    if LOWPOLY: cu.resolution_u = 2
     tmp = bpy.data.objects.new(name + "_tmp", cu); col.objects.link(tmp)
     dg = bpy.context.evaluated_depsgraph_get()
     me = bpy.data.meshes.new_from_object(tmp.evaluated_get(dg)); me.materials.clear(); me.materials.append(m)

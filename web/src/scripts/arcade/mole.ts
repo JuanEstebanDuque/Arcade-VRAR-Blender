@@ -32,8 +32,9 @@ export class MoleGame {
 
     constructor(private ctx: Context, byName: Map<string, Object3D>) {
         for (let k = 1; k <= 9; k++) {
-            const o = byName.get("Mole_" + k); const head = byName.get(`Mole_${k}_Cabeza`);
-            if (!o || !head) continue;
+            const o = byName.get("Mole_" + k); if (!o) continue;
+            // la cabeza: punto 7 cm arriba del centro del topo (funciona aunque las partes estén unidas en una malla)
+            const head = byName.get(`Mole_${k}_Cabeza`) ?? (() => { const h = new Object3D(); h.position.set(0, 0.07, 0); o.add(h); return h; })();
             const m: Mole = { obj: o, head, baseY: o.position.y, up: 0, state: "down", timer: 0, squash: 0 };
             this.moles.push(m);
             const c = o.addComponent(MoleClick); c.game = this; c.index = this.moles.length - 1;
@@ -132,7 +133,7 @@ export class MoleGame {
         for (const c of xr.controllers) hitters.push({ key: c, p: c.gripWorldPosition.clone() });
         for (const g of this.mallets) if (g.holder) {
             const head = g.obj.children.find(ch => ch.name.endsWith("_Cabeza"));
-            if (head) hitters.push({ key: g, p: worldPos(head) });
+            hitters.push({ key: g, p: head ? worldPos(head) : g.obj.localToWorld(new Vector3(0.18, 0, 0)) });
         }
         for (const h of hitters) {
             const prev = this.prevHands.get(h.key); this.prevHands.set(h.key, h.p);

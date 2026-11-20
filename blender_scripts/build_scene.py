@@ -231,7 +231,7 @@ box("Rueda_Repisa", (1.24, 0.25, 0.06), (0, -0.38, 0.98), M["black"], C, parent=
 # tambor: eje en X, textura con 12 segmentos (u = a lo largo del eje, v = ángulo)
 import bmesh as _bm
 bm = _bm.new(); uvl = bm.loops.layers.uv.verify()
-NSEG, NA, RAD, LEN = 12, 72, 0.5, 1.08
+NSEG, NA, RAD, LEN = 12, (36 if LOWPOLY else 72), 0.5, 1.08
 rings = []
 for i in range(NA + 1):
     a = 2 * math.pi * i / NA
@@ -390,7 +390,7 @@ for s in (-1, 1):
     tube(f"Basket_Riel_{s}", [(BX0 + 0.05, BY + s * 0.55, 2.62), (BX1 - 0.05, BY + s * 0.55, 2.62)], 0.018, M["chrome"], C)
     # red lateral de alambre
     bm = _bm.new()
-    bmesh.ops.create_grid(bm, x_segments=22, y_segments=12, size=0.5)
+    bmesh.ops.create_grid(bm, x_segments=(12 if LOWPOLY else 22), y_segments=(7 if LOWPOLY else 12), size=0.5)
     bmesh.ops.scale(bm, vec=Vector((BL - 0.6, 1.45, 1)), verts=bm.verts)
     nm = _finish(f"Basket_Red_{s}", bm, [M["black"]], C, (BXC + 0.3, BY + s * 0.55, 1.9), (90, 0, 0), None)
     wire_from(nm, 0.004)
@@ -399,8 +399,8 @@ box("S_Basket_Tablero", (0.05, 1.05, 0.78), (BX1 - 0.1, BY, 2.2), M["white"], C,
 box("Basket_Brazo_Aro", (0.2, 0.06, 0.04), (BX1 - 0.22, BY, 1.98), M["chrome"], C)
 torus("Basket_Aro", 0.2, 0.013, (BX1 - 0.42, BY, 1.98), M["orange"], C, mseg=8)
 bm = _bm.new()
-bmesh.ops.create_cone(bm, cap_ends=False, segments=14, radius1=0.13, radius2=0.2, depth=0.3)
-bmesh.ops.subdivide_edges(bm, edges=[e for e in bm.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > 0.1], cuts=3, use_grid_fill=False)
+bmesh.ops.create_cone(bm, cap_ends=False, segments=(10 if LOWPOLY else 14), radius1=0.13, radius2=0.2, depth=0.3)
+bmesh.ops.subdivide_edges(bm, edges=[e for e in bm.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > 0.1], cuts=(2 if LOWPOLY else 3), use_grid_fill=False)
 net = _finish("Basket_Net", bm, [M["white"]], C, (BX1 - 0.42, BY, 1.83), (0, 0, 0), None)
 wire_from(net, 0.005)
 cyl("Hoop_Trigger", 0.15, 0.06, (BX1 - 0.42, BY, 1.86), M["n_cyan"], C, verts=12)
@@ -541,9 +541,9 @@ lima = mat_img("Lata_Lima", "can_lima.png", rough=0.3, metal=0.3)
 for k, z in enumerate((0.35, 0.75, 1.15, 1.55)):
     box(f"Nevera_Repisa_{k}", (0.62, 0.62, 0.015), (0.08, 0, z), M["chrome"], C, parent=NV)
     for j in range(5):
-        for r in range(2):
+        for r in range(1 if LOWPOLY else 2):
             cyl(f"Nevera_Lata_{k}_{j}_{r}", 0.032, 0.12, (0.0 + r * 0.12 + 0.12, -0.24 + j * 0.12, z + 0.068),
-                canm if (j + k) % 2 == 0 else lima, C, parent=NV, verts=12, cap_mat=M["chrome"])
+                canm if (j + k) % 2 == 0 else lima, C, parent=NV, verts=12, cap_mat=None if LOWPOLY else M["chrome"])
 HG = empty("Nevera_Bisagra", (0.41, -0.38, 0), C, parent=NV)
 box("Fridge_Door", (0.03, 0.74, 1.78), (0.0, 0.37, 0.98), M["glass"], C, parent=HG)
 for nm, pts in (("Puerta_Marco_Nevera", [(0.0, 0.01, 0.09), (0.0, 0.73, 0.09), (0.0, 0.73, 1.87), (0.0, 0.01, 1.87)]),):
