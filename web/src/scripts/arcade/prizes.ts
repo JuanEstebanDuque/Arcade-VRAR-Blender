@@ -61,7 +61,7 @@ export class PrizeShop {
             sfx.win(); p.anim = 1;
             this.won.push(c.key);
             try { localStorage.setItem(KEY, JSON.stringify(this.won)); } catch { }
-            this.placeCopy(c.key, this.won.length - 1);
+            this.placeCopy(c.key, this.won.length - 1, true);
             this.display?.set("¡GRACIAS!", "#00ff88", `-${c.cost}`);
             setTimeout(() => this.showBalance(), 1500);
         } else {
@@ -80,8 +80,8 @@ export class PrizeShop {
         return o;
     }
 
-    /** El premio ganado aparece sobre el mostrador, con física: se apoya bien y se puede agarrar como un balón. */
-    private placeCopy(name: string, i: number) {
+    /** El premio ganado aparece directo en la mano (PC). Si lo sueltas cae al piso y lo puedes volver a agarrar. */
+    private placeCopy(name: string, i: number, toHand = false) {
         const p = this.prizes.get(name); if (!p) return;
         const visual = this.cloneVisual(p.obj);
         visual.position.set(0, 0, 0);
@@ -90,25 +90,22 @@ export class PrizeShop {
         const bb = new Box3().setFromObject(visual);
         const size = bb.getSize(new Vector3()), center = bb.getCenter(new Vector3());
         visual.removeFromParent();
-        // caja invisible que hace de cuerpo físico; lo visual va adentro, centrado
-        const body = new Mesh(new BoxGeometry(Math.max(size.x, 0.04), Math.max(size.y, 0.04), Math.max(size.z, 0.04)),
-            new MeshBasicMaterial({ visible: false }));
-        body.name = "Ganado_" + name;
+        // raíz con cuerpo físico (caja del tamaño del premio); lo visual va adentro, centrado
+        const body = new Object3D(); body.name = "Ganado_" + name;
         body.add(visual); visual.position.sub(center);
-        const col = i % 6, row = Math.floor(i / 6);
-        const pos = this.slotBase.clone().add(this.slotAxis.clone().multiplyScalar(col * 0.32));
-        pos.add(new Vector3(-row * 0.22, size.y / 2 + 0.02, 0));
-        body.position.copy(pos);
+        // si no va a la mano (premios guardados de antes o en VR), aparece frente al mostrador y cae al piso
+        const front = this.slotBase.clone().add(new Vector3(0.7 + (i % 3) * 0.25, 0.4, 0)).add(this.slotAxis.clone().multiplyScalar((i % 5) * 0.3));
+        body.position.copy(front);
         this.ctx.scene.add(body);
-        BoxCollider.add(body, { rigidbody: true });
-        const rb = body.getComponent(Rigidbody)!;
-        rb.mass = 0.4;
-        Hands.register(body, {
+        body.addComponent(BoxCollider, { size: new Vector3(Math.max(size.x, 0.05), Math.max(size.y, 0.05), Math.max(size.z, 0.05)), center: new Vector3() } as any);
+        const rb = body.addComponent(Rigidbody, { mass: 0.4 } as any);
+        const g = Hands.register(body, {
             rb,
             desk: { pos: [0.2, -0.2, -0.5], rot: [0, 0, 0] },
             // clic con el premio en la mano: lo lanza suavemente hacia donde apuntas
-            onUse: (_h, ray) => { const g = Hands.desk; if (g) Hands.release(g, ray.direction.clone().multiplyScalar(2.2).add(new Vector3(0, 1.2, 0))); },
+            onUse: (_h, ray) => Hands.release(g, ray.direction.clone().multiplyScalar(2.2).add(new Vector3(0, 1.2, 0))),
         });
+        if (toHand && !this.ctx.isInXR) Hands.grab(g, { kind: "desk" });
         this.copies.push(body);
     }
 
@@ -120,7 +117,7 @@ export class PrizeShop {
     update() {
         const dt = this.ctx.time.deltaTime; const t = this.ctx.time.time;
         this.prizes.forEach(p => {
-            let s = p.baseScale * (p.hover ? 1.12 : 1);
+            let s = p.baseScale;
             if (p.anim > 0) { p.anim = Math.max(0, p.anim - dt * 1.2); s *= 1 + Math.sin(p.anim * Math.PI) * 0.4; p.obj.rotation.y += dt * 12 * p.anim; }
             p.obj.scale.setScalar(s);
             p.obj.position.copy(p.basePos);
