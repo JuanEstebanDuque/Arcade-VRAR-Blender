@@ -14,3 +14,5 @@ web/.agents/
 _to_delete*
 # Generado por Needle al correr el servidor
 web/include/
+# Modelos originales de MakerLab (~55 MB c/u): se guardan solo en el PC
+assets_externos/*.glb
