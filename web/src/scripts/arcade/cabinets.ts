@@ -58,7 +58,7 @@ class Cabinet {
             this.over -= dt;
             if (this.over <= 0) { this.screen.material = this.original; return; }
         }
-        this.acc += dt; if (this.acc < 1 / 20) return; this.acc = 0;   // 20 fps para no pesar
+        this.acc += dt; if (this.acc < 1 / 12) return; this.acc = 0;   // 12 fps para no pesar en el Quest
         this.draw();
     }
     private draw() {

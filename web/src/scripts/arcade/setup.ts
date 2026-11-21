@@ -10,6 +10,8 @@ import { Gallery } from "./gallery";
 import { Fridge } from "./fridge";
 import { PrizeShop } from "./prizes";
 import { Cabinets } from "./cabinets";
+import { TicketHud } from "./hud";
+import { placeSigns } from "./signs";
 import { staticCollider } from "./util";
 import { Box3 } from "three";
 import { MeshBasicMaterial } from "three";
@@ -57,7 +59,8 @@ export function setupArcade() {
         Hands.init(ctx);
         setupWheel(byName);
         games.push(new Basket(ctx, byName), new MoleGame(ctx, byName), new Gallery(ctx, byName),
-            new Fridge(ctx, byName), new PrizeShop(ctx, byName), new Cabinets(ctx, byName));
+            new Fridge(ctx, byName), new PrizeShop(ctx, byName), new Cabinets(ctx, byName), new TicketHud(ctx));
+        placeSigns(ctx, byName);
 
         // Caminar en PC: chocar con muebles y máquinas
         const roots: Object3D[] = [];

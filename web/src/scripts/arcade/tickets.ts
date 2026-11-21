@@ -14,8 +14,9 @@ class TicketManagerImpl {
     private _value = 0;
     private _shown = 0;          // valor que se muestra (sube de a poco, como un contador real)
     private listeners: Listener[] = [];
-    private boards: { canvas: HTMLCanvasElement; tex: CanvasTexture; label: string }[] = [];
+    private boards: { canvas: HTMLCanvasElement; tex: CanvasTexture; label: string; grid?: HTMLCanvasElement }[] = [];
     private flash = 0;
+    private acc = 0; private tick = 0; private dirty = false;
 
     constructor() {
         try {
@@ -61,22 +62,29 @@ class TicketManagerImpl {
         tex.colorSpace = SRGBColorSpace;
         const mat = new MeshBasicMaterial({ map: tex, toneMapped: false });
         makeScreenPlane(obj, mat, 0.96);
-        this.boards.push({ canvas, tex, label });
+        // la rejilla de LEDs se pinta una sola vez y luego se copia
+        const grid = document.createElement("canvas"); grid.width = canvas.width; grid.height = canvas.height;
+        const gg = grid.getContext("2d")!; gg.fillStyle = "rgba(255,255,255,0.03)";
+        for (let x = 0; x < grid.width; x += 8) for (let y = 0; y < grid.height; y += 8) gg.fillRect(x, y, 5, 5);
+        this.boards.push({ canvas, tex, label, grid });
         this.redraw();
     }
 
     /** Llamar cada frame. */
     update(dt: number) {
+        // el contador sube de a poco, pero el dibujo del marcador se actualiza máximo ~8 veces por segundo
+        // (redibujar el canvas y subirlo a la GPU cada frame era lo que bajaba los FPS en VR)
+        this.acc += dt;
         if (this._shown < this._value) {
-            // sube 1 ticket cada ~30 ms, más rápido si la diferencia es grande
-            const step = Math.max(1, Math.round((this._value - this._shown) * dt * 6));
+            const step = Math.max(1, Math.round((this._value - this._shown) * dt * 8));
             this._shown = Math.min(this._value, this._shown + step);
-            sfx.ticket();
-            this.redraw();
+            this.tick += dt; if (this.tick > 0.09) { this.tick = 0; sfx.ticket(); }
+            this.dirty = true;
         } else if (this.flash > 0) {
             this.flash = Math.max(0, this.flash - dt * 1.5);
-            this.redraw();
+            this.dirty = true;
         }
+        if (this.dirty && this.acc > 0.125) { this.acc = 0; this.dirty = false; this.redraw(); }
     }
 
     private redraw() {
@@ -85,18 +93,16 @@ class TicketManagerImpl {
             const w = b.canvas.width, h = b.canvas.height;
             g.fillStyle = "#07020f"; g.fillRect(0, 0, w, h);
             // rejilla tipo LED
-            g.fillStyle = "rgba(255,255,255,0.03)";
-            for (let x = 0; x < w; x += 8) for (let y = 0; y < h; y += 8) g.fillRect(x, y, 5, 5);
+            if (b.grid) g.drawImage(b.grid, 0, 0);
             g.textAlign = "center"; g.textBaseline = "middle";
-            g.shadowColor = "#00e5ff"; g.shadowBlur = 18;
-            g.fillStyle = "#00e5ff";
             g.font = "bold 46px 'Courier New', monospace";
-            g.fillText(b.label, w / 2, 48);
+            g.lineWidth = 10; g.strokeStyle = "rgba(0,229,255,0.25)"; g.strokeText(b.label, w / 2, 48);
+            g.fillStyle = "#00e5ff"; g.fillText(b.label, w / 2, 48);
             const pink = this.flash > 0 ? `rgb(255,${Math.round(60 + 195 * this.flash)},${Math.round(172 + 83 * this.flash)})` : "#ff3cac";
-            g.shadowColor = "#ff3cac"; g.shadowBlur = 30;
-            g.fillStyle = pink;
             g.font = "bold 150px 'Courier New', monospace";
-            g.fillText(String(this._shown).padStart(5, "0"), w / 2, 160);
+            const txt = String(this._shown).padStart(5, "0");
+            g.lineWidth = 16; g.strokeStyle = "rgba(255,60,172,0.25)"; g.strokeText(txt, w / 2, 160);
+            g.fillStyle = pink; g.fillText(txt, w / 2, 160);
             b.tex.needsUpdate = true;
         }
     }

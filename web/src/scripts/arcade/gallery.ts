@@ -45,7 +45,7 @@ export class Gallery {
             if (!gun || !muzzle) continue;
             const g = Hands.register(gun, {
                 returnHome: true,
-                hold: { pos: [0, -0.02, 0.02], rot: [0, 90, 0], aim: true },
+                hold: { pos: [0, 0, 0], rot: [0, 0, 0], aim: true, forward: 0.04 },
                 desk: { pos: [0.22, -0.2, -0.45], rot: [0, 90, 0] },
                 onUse: (h, ray) => this.shoot(g, muzzle, h, ray),
             });
@@ -53,7 +53,8 @@ export class Gallery {
         }
         this.tracer = new Line(new BufferGeometry().setFromPoints([new Vector3(), new Vector3()]),
             new LineBasicMaterial({ color: 0xff3cac, transparent: true, opacity: 0.9 }));
-        this.tracer.visible = false; this.tracer.frustumCulled = false;
+        // se deja visible el primer segundo (de largo cero) para que el shader se compile al cargar y no al primer disparo
+        this.tracer.visible = true; this.tracer.frustumCulled = false; this.tracerTime = 1.0;
         ctx.scene.add(this.tracer);
     }
 

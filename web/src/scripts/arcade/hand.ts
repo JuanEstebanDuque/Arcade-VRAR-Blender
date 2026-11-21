@@ -9,7 +9,7 @@ export interface GrabOptions {
     /** si tiene Rigidbody se puede lanzar (al soltarlo sigue con la velocidad de la mano) */
     rb?: Rigidbody;
     /** pose en la mano en VR. Si se omite, se agarra "como esté". aim=true: sigue el rayo del control (pistolas) */
-    hold?: Pose & { aim?: boolean };
+    hold?: Pose & { aim?: boolean; forward?: number };
     /** pose relativa a la cámara en PC */
     desk?: Pose;
     /** al soltarlo vuelve solo a su sitio */
@@ -178,7 +178,7 @@ class HandsImpl {
                     this.poseInHand(held, c);
                     this.track(held, t);
                     if (tr?.isDown) {
-                        const ray = new Ray(c.rayWorldPosition.clone(), new Vector3(0, 0, -1).applyQuaternion(c.rayWorldQuaternion));
+                        const ray = new Ray(c.rayWorldPosition.clone(), this.aimDir(c));
                         held.opt.onUse?.({ kind: "xr", ctrl: c }, ray);
                     }
                     if (sq?.isUp || (sq && !sq.pressed)) this.release(held);
@@ -207,18 +207,33 @@ class HandsImpl {
         }
     }
 
+    /** Dirección hacia donde apunta el control (la misma del rayo láser). */
+    private aimDir(c: NeedleXRController) {
+        const r = c.ray; return r ? r.direction.clone().normalize() : new Vector3(0, 0, -1).applyQuaternion(c.rayWorldQuaternion);
+    }
+
     private poseInHand(g: Grabbable, c: NeedleXRController) {
         const h = g.opt.hold;
-        if (h) {
-            const baseQ = h.aim ? c.rayWorldQuaternion : c.gripWorldQuaternion;
-            const q = baseQ.clone().multiply(qFrom(h.rot));
+        if (h && h.aim) {
+            // la pieza se arma con su eje +X hacia donde apunta el control y +Y hacia arriba del control
+            const fwd = this.aimDir(c);
+            let up = new Vector3(0, 1, 0).applyQuaternion(c.gripWorldQuaternion);
+            const side = new Vector3().crossVectors(fwd, up);
+            if (side.lengthSq() < 1e-4) side.set(1, 0, 0);
+            side.normalize(); up = new Vector3().crossVectors(side, fwd).normalize();
+            // columnas: X = adelante, Y = arriba, Z = X × Y
+            const m = new Matrix4().makeBasis(fwd, up, new Vector3().crossVectors(fwd, up).normalize());
+            g.obj.worldQuaternion = new Quaternion().setFromRotationMatrix(m);
+            g.obj.worldPosition = c.gripWorldPosition.clone().add(fwd.clone().multiplyScalar(h.forward ?? 0.05));
+        } else if (h) {
+            const q = c.gripWorldQuaternion.clone().multiply(qFrom(h.rot));
             g.obj.worldQuaternion = q;
-            g.obj.worldPosition = c.gripWorldPosition.clone().add(new Vector3(...h.pos).applyQuaternion(baseQ));
+            g.obj.worldPosition = c.gripWorldPosition.clone().add(new Vector3(...h.pos).applyQuaternion(c.gripWorldQuaternion));
         } else {
             const grip = new Matrix4().compose(c.gripWorldPosition, c.gripWorldQuaternion, new Vector3(1, 1, 1));
-            const m = grip.multiply(g.rel);
-            const p = new Vector3(), q = new Quaternion(), s = new Vector3();
-            m.decompose(p, q, s);
+            const mm = grip.multiply(g.rel);
+            const p = new Vector3(), q = new Quaternion(), s2 = new Vector3();
+            mm.decompose(p, q, s2);
             g.obj.worldPosition = p; g.obj.worldQuaternion = q;
         }
         if (g.opt.rb) g.opt.rb.teleport(g.obj.worldPosition);

@@ -49,7 +49,7 @@ export class MoleGame {
             const g = Hands.register(mt, {
                 returnHome: true,
                 desk: { pos: [0.28, -0.3, -0.55], rot: [0, 90, 0] },
-                hold: { pos: [0, 0, -0.04], rot: [0, 90, 0] },
+                hold: { pos: [0, 0, 0], rot: [0, 0, 0], aim: true, forward: 0.12 },
                 onUse: (_h, ray) => this.deskSwing(g, ray),
             });
             this.mallets.push(g);
