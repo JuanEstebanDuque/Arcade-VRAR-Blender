@@ -1,6 +1,6 @@
 import { Context, OrbitControls, findObjectOfType } from "@needle-tools/engine";
 import { Box3, Euler, Object3D, Quaternion, Vector3 } from "three";
-import { Desk, inXR } from "./state";
+import { Desk, inXR, Intro } from "./state";
 
 /**
  * Caminar en el PC (sin visor): WASD / flechas para moverse, arrastrar con el mouse para mirar.
@@ -72,6 +72,7 @@ export class DesktopWalker {
         const dt = Math.min(0.05, ctx.time.deltaTime);
 
         // mirar: lo maneja onPointerMove (eventos del navegador)
+        if (Intro.blocking) { this.lookX = 0; this.lookY = 0; }
         this.yaw += this.lookX; this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch + this.lookY));
         this.lookX = 0; this.lookY = 0;
 
@@ -82,6 +83,7 @@ export class DesktopWalker {
         if (k("s") || k("S") || k("ArrowDown")) fz -= 1;
         if (k("a") || k("A") || k("ArrowLeft")) fx -= 1;
         if (k("d") || k("D") || k("ArrowRight")) fx += 1;
+        if (Intro.blocking) { fx = 0; fz = 0; }
         if (fx || fz) {
             const speed = (k("Shift") ? 3.6 : 2.0) * dt;
             const len = Math.hypot(fx, fz);

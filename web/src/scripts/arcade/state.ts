@@ -10,11 +10,14 @@ export const Desk = {
     usedFrame: -10,
 };
 
+/** Pantalla de inicio activa: mientras sea true no se puede mover ni interactuar. */
+export const Intro = { blocking: false };
+
 export function inXR(ctx: Context) { return !!ctx.isInXR; }
 
 /** ¿Este evento de clic viene del mouse en PC y no fue un arrastre? */
 export function isDeskClick(ctx: Context, mode: string) {
-    return !inXR(ctx) && mode === "screen" && !Desk.dragged && ctx.time.frameCount - Desk.usedFrame > 2;
+    return !Intro.blocking && !inXR(ctx) && mode === "screen" && !Desk.dragged && ctx.time.frameCount - Desk.usedFrame > 2;
 }
 
 export function setCursor(pointer: boolean) {

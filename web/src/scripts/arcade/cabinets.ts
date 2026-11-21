@@ -2,7 +2,7 @@ import { Behaviour, Context, PointerEventData } from "@needle-tools/engine";
 import { CanvasTexture, Material, Mesh, MeshBasicMaterial, Object3D, SRGBColorSpace } from "three";
 import { Tickets } from "./tickets";
 import { sfx, chiptune } from "./sfx";
-import { inXR, isDeskClick, setCursor } from "./state";
+import { inXR, isDeskClick, setCursor, Intro } from "./state";
 
 type Style = "shooter" | "runner" | "racer" | "dance";
 const SONGS: number[][] = [
@@ -17,6 +17,7 @@ class CabClick extends Behaviour {
     onPointerEnter() { if (!inXR(this.context)) setCursor(true); }
     onPointerExit() { setCursor(false); }
     onPointerClick(e: PointerEventData) {
+        if (Intro.blocking) return;
         if (e.mode === "screen" && !isDeskClick(this.context, e.mode)) return;
         this.cab.play();
     }

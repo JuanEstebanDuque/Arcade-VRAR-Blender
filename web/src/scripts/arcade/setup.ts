@@ -12,6 +12,8 @@ import { PrizeShop } from "./prizes";
 import { Cabinets } from "./cabinets";
 import { TicketHud } from "./hud";
 import { placeSigns } from "./signs";
+import { IntroScreen } from "./intro";
+import { Intro } from "./state";
 import { staticCollider } from "./util";
 import { Box3 } from "three";
 import { MeshBasicMaterial } from "three";
@@ -25,6 +27,8 @@ import { MeshBasicMaterial } from "three";
  *   Scoreboard / Scoreboard_Big   marcadores de tickets
  */
 let walker: DesktopWalker | undefined;
+let intro: IntroScreen | undefined;
+let hud: TicketHud | undefined;
 const games: { update(): void }[] = [];
 
 export function setupArcade() {
@@ -59,8 +63,10 @@ export function setupArcade() {
         Hands.init(ctx);
         setupWheel(byName);
         games.push(new Basket(ctx, byName), new MoleGame(ctx, byName), new Gallery(ctx, byName),
-            new Fridge(ctx, byName), new PrizeShop(ctx, byName), new Cabinets(ctx, byName), new TicketHud(ctx));
+            new Fridge(ctx, byName), new PrizeShop(ctx, byName), new Cabinets(ctx, byName));
+        hud = new TicketHud(ctx);
         placeSigns(ctx, byName);
+        intro = new IntroScreen(ctx); (window as any).__intro = intro;
 
         // Caminar en PC: chocar con muebles y máquinas
         const roots: Object3D[] = [];
@@ -85,7 +91,10 @@ export function setupArcade() {
 
     onUpdate(ctx => {
         Tickets.update(ctx.time.deltaTime);
-        walker?.update();
+        intro?.update();
+        walker?.update();          // con la pantalla de inicio activa no se mueve
+        hud?.update();
+        if (Intro.blocking) return; // nada responde hasta quitar la pantalla de inicio
         Hands.update();
         for (const g of games) g.update();
     });

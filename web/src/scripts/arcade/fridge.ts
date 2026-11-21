@@ -2,7 +2,7 @@ import { Behaviour, Context, PointerEventData } from "@needle-tools/engine";
 import { Object3D, Vector3 } from "three";
 import { Hands, Grabbable } from "./hand";
 import { sfx } from "./sfx";
-import { inXR, isDeskClick, setCursor } from "./state";
+import { inXR, isDeskClick, setCursor, Intro } from "./state";
 import { worldPos } from "./util";
 
 class DoorClick extends Behaviour {
@@ -10,6 +10,7 @@ class DoorClick extends Behaviour {
     onPointerEnter() { if (!inXR(this.context)) setCursor(true); }
     onPointerExit() { setCursor(false); }
     onPointerClick(e: PointerEventData) {
+        if (Intro.blocking) return;
         if (e.mode === "screen" && !isDeskClick(this.context, e.mode)) return;
         this.fridge.toggle();
     }

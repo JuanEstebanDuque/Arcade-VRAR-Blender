@@ -4,7 +4,7 @@ import { Hands } from "./hand";
 import { LedDisplay } from "./screens";
 import { Tickets } from "./tickets";
 import { sfx } from "./sfx";
-import { inXR, isDeskClick, setCursor } from "./state";
+import { inXR, isDeskClick, setCursor, Intro } from "./state";
 
 const KEY = "pixel84_prizes";
 
@@ -13,6 +13,7 @@ class PrizeClick extends Behaviour {
     onPointerEnter() { if (this.copy) return; if (!inXR(this.context)) setCursor(true); this.shop.hover(this, true); }
     onPointerExit() { setCursor(false); this.shop.hover(this, false); }
     onPointerClick(e: PointerEventData) {
+        if (Intro.blocking) return;
         if (this.copy) return;
         if (e.mode === "screen" && !isDeskClick(this.context, e.mode)) return;
         this.shop.buy(this);

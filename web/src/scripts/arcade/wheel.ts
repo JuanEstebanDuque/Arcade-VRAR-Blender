@@ -3,7 +3,7 @@ import { Color, Material, Mesh, MeshStandardMaterial, Object3D, Vector3 } from "
 import { LedDisplay } from "./screens";
 import { Tickets } from "./tickets";
 import { sfx } from "./sfx";
-import { Desk, inXR, setCursor } from "./state";
+import { Desk, inXR, setCursor, Intro } from "./state";
 
 // Deben coincidir con blender_scripts/gen_textures.py (textura wheel_drum.png, de arriba hacia abajo)
 const SEGMENTS = [10, 25, 5, 50, 10, 100, 20, 5, 250, 15, 30, 500];
@@ -56,17 +56,17 @@ export class WheelGame extends Behaviour {
     onPointerEnter() { if (!inXR(this.context)) setCursor(true); }
     onPointerExit() { setCursor(false); }
     onPointerDown(e: PointerEventData) {
-        if (e.mode !== "screen" || inXR(this.context)) return;
+        if (Intro.blocking || e.mode !== "screen" || inXR(this.context)) return;
         this.dragging = true; this.dragMoved = false; this.dragVal = 0;
         this.dragStart = this.context.input.mousePosition.y;
         Desk.captured = true;
     }
     /** En VR, apuntar con el rayo y apretar el gatillo también la baja. */
-    onPointerClick(e: PointerEventData) { if (e.mode !== "screen") this.pull(); }
+    onPointerClick(e: PointerEventData) { if (!Intro.blocking && e.mode !== "screen") this.pull(); }
 
     /** En VR: empujar la palanca hacia abajo con la mano o el control. */
     onUpdateXR(args: NeedleXREventArgs) {
-        if (!this.grip) return;
+        if (!this.grip || Intro.blocking) return;
         const gp = this.grip.getWorldPosition(new Vector3());
         for (const c of args.xr.controllers) {
             const p = c.gripWorldPosition.clone();

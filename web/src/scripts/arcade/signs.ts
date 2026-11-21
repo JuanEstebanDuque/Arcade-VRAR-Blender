@@ -14,7 +14,7 @@ function sign(lines: { t: string; c: string; s: number }[], w: number, h: number
     return new Mesh(new PlaneGeometry(w, h), new MeshBasicMaterial({ map: tex, toneMapped: false, side: DoubleSide }));
 }
 
-/** Carteles para que se entienda qué se puede hacer: encima de las maquinitas y uno de bienvenida en la entrada. */
+/** Carteles "¡TÓCALA!" encima de las maquinitas (la bienvenida ahora es la pantalla de inicio). */
 export function placeSigns(ctx: Context, byName: Map<string, Object3D>) {
     const center = new Vector3(0, 1.6, 0);
     const lookAtRoom = (m: Mesh, at: Vector3) => { m.position.copy(at); m.lookAt(new Vector3(center.x, at.y, center.z)); };
@@ -25,21 +25,6 @@ export function placeSigns(ctx: Context, byName: Map<string, Object3D>) {
         // al frente y arriba de la máquina, mirando al salón
         const toRoom = center.clone().sub(c).setY(0).normalize();
         lookAtRoom(m, new Vector3(c.x, b.max.y + 0.16, c.z).add(toRoom.multiplyScalar(0.25)));
-        ctx.scene.add(m);
-    }
-    // cartel de bienvenida junto a la entrada
-    const floor = byName.get("FLOOR");
-    if (floor) {
-        const fb = new Box3().setFromObject(floor);
-        const m = sign([
-            { t: "BIENVENIDO A PIXEL 84", c: "#00e5ff", s: 44 },
-            { t: "Juega para ganar tickets:", c: "#ffffff", s: 30 },
-            { t: "Rueda · Topo · Tiro · Basket · Maquinitas", c: "#ffd728", s: 28 },
-            { t: "Canjéalos por premios en el mostrador", c: "#3cff7a", s: 30 },
-        ], 1.3, 0.62, 768);
-        // colgado adelante a la izquierda de donde aparece el jugador, mirando hacia la entrada
-        const p = new Vector3(-1.7, 2.25, fb.max.z - 2.0);
-        m.position.copy(p); m.lookAt(new Vector3(p.x + 0.8, p.y, p.z + 5));
         ctx.scene.add(m);
     }
 }
