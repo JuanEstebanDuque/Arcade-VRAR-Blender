@@ -1,6 +1,6 @@
-import { Behaviour, Context, NeedleXRController, PointerEventData, Rigidbody } from "@needle-tools/engine";
+import { Behaviour, Context, findObjectOfType, NeedleXRController, XRControllerMovement, PointerEventData, Rigidbody } from "@needle-tools/engine";
 import { Box3, Euler, Matrix4, Object3D, Quaternion, Ray, Raycaster, Vector2, Vector3 } from "three";
-import { Desk, inXR, isDeskClick, setCursor } from "./state";
+import { Desk, inXR, Intro, isDeskClick, setCursor } from "./state";
 
 export type Holder = { kind: "desk" } | { kind: "xr"; ctrl: NeedleXRController };
 type Pose = { pos: [number, number, number]; rot: [number, number, number] };
@@ -20,6 +20,8 @@ export interface GrabOptions {
     onRelease?: (vel: Vector3, h: Holder) => void;
     /** gatillo en VR / clic en PC mientras se sostiene */
     onUse?: (h: Holder, ray: Ray) => void;
+    /** se puede girar en la mano: PC = clic derecho + arrastrar y rueda; VR = joystick del control que lo sostiene */
+    spin?: boolean;
 }
 
 const D2R = Math.PI / 180;
@@ -35,6 +37,11 @@ export class Grabbable {
     returning = 0;
     pendingVel: Vector3 | null = null; pendingFrames = 0;
     history: { p: Vector3; t: number }[] = [];
+    /** giro extra que la persona le da al objeto en la mano */
+    spin = new Quaternion();
+    /** VR: agarrado sin apretar el grip (p. ej. al canjear un premio): no se suelta hasta apretar y soltar el grip */
+    sticky = false;
+    grabTime = 0;
     constructor(public obj: Object3D, public opt: GrabOptions) {
         obj.updateWorldMatrix(true, true);
         obj.getWorldPosition(this.homePos); obj.getWorldQuaternion(this.homeQuat);
@@ -71,9 +78,38 @@ class HandsImpl {
     private xrHeld = new Map<NeedleXRController, Grabbable>();
     private raycaster = new Raycaster();
 
+    private rotating = false;
+    private mov?: XRControllerMovement | null;
+
     init(ctx: Context) {
         this.ctx = ctx;
         window.addEventListener("keydown", e => { if ((e.key === "q" || e.key === "Q") && this.desk) this.release(this.desk); });
+        // PC: clic derecho + arrastrar gira lo que tienes en la mano (en todos los ejes); la rueda lo gira sobre sí mismo
+        window.addEventListener("pointerdown", e => {
+            if (e.button === 2 && this.desk?.opt.spin && !inXR(ctx)) { this.rotating = true; Desk.captured = true; }
+        }, true);
+        window.addEventListener("pointermove", e => {
+            if (!this.rotating || !this.desk) return;
+            if (!(e.buttons & 2)) { this.rotating = false; return; }
+            Desk.captured = true;
+            this.spinBy(this.desk, e.movementY * 0.012, e.movementX * 0.012, 0);
+        }, true);
+        window.addEventListener("pointerup", e => {
+            if (e.button !== 2) return;
+            // que el clic derecho no cuente como "usar" ni como clic en otra cosa
+            Desk.usedFrame = ctx.time.frameCount + 1;
+            this.rotating = false;
+        }, true);
+        window.addEventListener("wheel", e => {
+            if (!this.desk?.opt.spin || inXR(ctx)) return;
+            this.spinBy(this.desk, 0, 0, Math.sign(e.deltaY) * 0.25);
+        }, { passive: true });
+    }
+
+    /** Gira el objeto en la mano: ángulos en el marco de la cámara (PC) o del control (VR). */
+    private spinBy(g: Grabbable, ax: number, ay: number, az: number) {
+        const d = new Quaternion().setFromEuler(new Euler(ax, ay, az, "XYZ"));
+        g.spin.premultiply(d);
     }
 
     register(obj: Object3D, opt: GrabOptions): Grabbable {
@@ -85,9 +121,23 @@ class HandsImpl {
 
     isHeld(g: Grabbable) { return !!g.holder; }
 
+    /** VR: poner un objeto directo en la mano del control (sin apretar el grip). */
+    grabXR(g: Grabbable, ctrl?: NeedleXRController) {
+        const ctrls = this.ctx.xr?.controllers ?? [];
+        let c = ctrl && ctrls.includes(ctrl) ? ctrl : undefined;
+        if (!c) c = ctrls.find(k => k.getButton("xr-standard-trigger")?.pressed) ?? ctrls.find(k => k.side === "right") ?? ctrls[0];
+        if (!c) return false;
+        const old = this.xrHeld.get(c); if (old) this.release(old);
+        this.grab(g, { kind: "xr", ctrl: c });
+        g.sticky = true;
+        this.poseInHand(g, c);
+        return true;
+    }
+
     grab(g: Grabbable, h: Holder) {
         if (g.holder) this.release(g, new Vector3());
         g.holder = h; g.returning = 0; g.history = []; g.pendingFrames = 0;
+        g.spin.identity(); g.grabTime = this.ctx.time.time; g.sticky = false;
         if (g.opt.rb) { g.opt.rb.isKinematic = true; g.opt.rb.resetVelocities(); }
         if (h.kind === "desk") { if (this.desk && this.desk !== g) this.release(this.desk); this.desk = g; Desk.usedFrame = this.ctx.time.frameCount; }
         else {
@@ -147,7 +197,7 @@ class HandsImpl {
             const d = g.opt.desk ?? { pos: [0.25, -0.25, -0.55], rot: [0, 0, 0] };
             const cq = cam.getWorldQuaternion(new Quaternion());
             const cp = cam.getWorldPosition(new Vector3());
-            g.obj.worldQuaternion = cq.clone().multiply(qFrom(d.rot));
+            g.obj.worldQuaternion = cq.clone().multiply(g.spin).multiply(qFrom(d.rot));
             g.obj.worldPosition = cp.add(new Vector3(...d.pos).applyQuaternion(cq));
             if (g.opt.rb) g.opt.rb.teleport(g.obj.worldPosition);
             this.track(g, t);
@@ -177,13 +227,28 @@ class HandsImpl {
                 } else if (held) {
                     this.poseInHand(held, c);
                     this.track(held, t);
-                    if (tr?.isDown) {
+                    if (held.opt.spin) {
+                        // joystick: girar lo que tienes (con la muñeca se completa el tercer eje)
+                        const st = c.getStick("xr-standard-thumbstick" as any);
+                        const dt = ctx.time.deltaTime * 3;
+                        if (st && (Math.abs(st.x) > 0.15 || Math.abs(st.y) > 0.15)) this.spinBy(held, -st.y * dt, st.x * dt, 0);
+                    }
+                    if (tr?.isDown && t - held.grabTime > 0.4) {
                         const ray = new Ray(c.rayWorldPosition.clone(), this.aimDir(c));
                         held.opt.onUse?.({ kind: "xr", ctrl: c }, ray);
                     }
-                    if (sq?.isUp || (sq && !sq.pressed)) this.release(held);
+                    if (held.sticky) { if (sq?.pressed) held.sticky = false; }
+                    else if (sq?.isUp || (sq && !sq.pressed)) this.release(held);
                 }
             }
+        }
+
+        // con un premio en la mano en VR, el joystick gira el premio en vez de teletransportar
+        if (this.mov === undefined) this.mov = findObjectOfType(XRControllerMovement, ctx);
+        if (this.mov && xr) {
+            let spinning = false; this.xrHeld.forEach(g => { if (g.opt.spin) spinning = true; });
+            const want = !spinning && !Intro.blocking;
+            if (this.mov.enabled !== want) this.mov.enabled = want;
         }
 
         // ----- velocidad de lanzamiento pendiente -----
@@ -226,7 +291,7 @@ class HandsImpl {
             g.obj.worldQuaternion = new Quaternion().setFromRotationMatrix(m);
             g.obj.worldPosition = c.gripWorldPosition.clone().add(fwd.clone().multiplyScalar(h.forward ?? 0.05));
         } else if (h) {
-            const q = c.gripWorldQuaternion.clone().multiply(qFrom(h.rot));
+            const q = c.gripWorldQuaternion.clone().multiply(g.spin).multiply(qFrom(h.rot));
             g.obj.worldQuaternion = q;
             g.obj.worldPosition = c.gripWorldPosition.clone().add(new Vector3(...h.pos).applyQuaternion(c.gripWorldQuaternion));
         } else {

@@ -51,7 +51,7 @@ export class IntroScreen {
             `<div style="color:#fff;font-size:18px;margin:10px 0 18px">Juega para ganar tickets:</div>` +
             `<div style="text-align:left;font-size:16px">${rows}</div>` +
             `<div style="color:#3cff7a;font-size:19px;font-weight:700;margin:20px 0 6px">Canjea tus tickets por premios en el mostrador</div>` +
-            `<div style="color:#bbb;font-size:13px;margin-bottom:18px">Tu total de tickets siempre está arriba a la derecha</div>` +
+            `<div style="color:#bbb;font-size:13px;margin-bottom:18px">Tu total de tickets siempre está arriba a la derecha · Gira tus premios con clic derecho o la rueda</div>` +
             `<div style="height:8px;border-radius:4px;background:#ffffff1a;overflow:hidden"><div id="intro-bar" style="height:100%;width:100%;background:linear-gradient(90deg,#ff3cac,#00e5ff)"></div></div>` +
             `<div style="color:#ffd728;font-size:14px;margin-top:12px">Pulsa cualquier tecla o haz clic para empezar</div></div>`;
         document.body.appendChild(o);
@@ -80,6 +80,7 @@ export class IntroScreen {
         });
         g.textAlign = "center";
         g.fillStyle = "#3cff7a"; g.font = "bold 34px sans-serif"; g.fillText("Canjea tus tickets en el mostrador de PREMIOS", W / 2, 488);
+        g.fillStyle = "#bbbbbb"; g.font = "24px sans-serif"; g.fillText("Gira tus premios con el joystick · Suéltalos con el grip", W / 2, 535);
         g.fillStyle = "#ffd728"; g.font = "bold 28px sans-serif"; g.fillText("Aprieta cualquier botón del control para empezar", W / 2, 600);
         const tex = new CanvasTexture(c); tex.colorSpace = SRGBColorSpace;
         const mat = (o: object) => new MeshBasicMaterial({ toneMapped: false, depthTest: false, transparent: true, ...o });

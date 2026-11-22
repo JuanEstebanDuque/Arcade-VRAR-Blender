@@ -1,4 +1,4 @@
-import { Behaviour, BoxCollider, Context, PointerEventData, Rigidbody, destroy } from "@needle-tools/engine";
+import { Behaviour, BoxCollider, Context, NeedleXRController, PointerEventData, Rigidbody, destroy } from "@needle-tools/engine";
 import { Box3, BoxGeometry, Mesh, MeshBasicMaterial, Object3D, Vector3 } from "three";
 import { Hands } from "./hand";
 import { LedDisplay } from "./screens";
@@ -16,7 +16,8 @@ class PrizeClick extends Behaviour {
         if (Intro.blocking) return;
         if (this.copy) return;
         if (e.mode === "screen" && !isDeskClick(this.context, e.mode)) return;
-        this.shop.buy(this);
+        const origin = (e.event as any)?.origin;
+        this.shop.buy(this, origin instanceof NeedleXRController ? origin : undefined);
     }
 }
 
@@ -56,13 +57,13 @@ export class PrizeShop {
 
     hover(c: PrizeClick, on: boolean) { const p = this.prizes.get(c.key); if (p) p.hover = on; }
 
-    buy(c: PrizeClick) {
+    buy(c: PrizeClick, ctrl?: NeedleXRController) {
         const p = this.prizes.get(c.key); if (!p) return;
         if (Tickets.spend(c.cost)) {
             sfx.win(); p.anim = 1;
             this.won.push(c.key);
             try { localStorage.setItem(KEY, JSON.stringify(this.won)); } catch { }
-            this.placeCopy(c.key, this.won.length - 1, true);
+            this.placeCopy(c.key, this.won.length - 1, true, ctrl);
             this.display?.set("¡GRACIAS!", "#00ff88", `-${c.cost}`);
             setTimeout(() => this.showBalance(), 1500);
         } else {
@@ -81,8 +82,8 @@ export class PrizeShop {
         return o;
     }
 
-    /** El premio ganado aparece directo en la mano (PC). Si lo sueltas cae al piso y lo puedes volver a agarrar. */
-    private placeCopy(name: string, i: number, toHand = false) {
+    /** El premio ganado aparece directo en la mano (PC y VR). Si lo sueltas cae al piso y lo puedes volver a agarrar. */
+    private placeCopy(name: string, i: number, toHand = false, ctrl?: NeedleXRController) {
         const p = this.prizes.get(name); if (!p) return;
         const visual = this.cloneVisual(p.obj);
         visual.position.set(0, 0, 0);
@@ -103,10 +104,13 @@ export class PrizeShop {
         const g = Hands.register(body, {
             rb,
             desk: { pos: [0.2, -0.2, -0.5], rot: [0, 0, 0] },
+            // en VR va en la palma, un poco adelante del control
+            hold: { pos: [0, 0.01, -0.07 - Math.max(size.x, size.y, size.z) * 0.4], rot: [0, 0, 0] },
+            spin: true,
             // clic con el premio en la mano: lo lanza suavemente hacia donde apuntas
             onUse: (_h, ray) => Hands.release(g, ray.direction.clone().multiplyScalar(2.2).add(new Vector3(0, 1.2, 0))),
         });
-        if (toHand && !this.ctx.isInXR) Hands.grab(g, { kind: "desk" });
+        if (toHand) { if (this.ctx.isInXR) Hands.grabXR(g, ctrl); else Hands.grab(g, { kind: "desk" }); }
         this.copies.push(body);
     }
 

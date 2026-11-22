@@ -55,7 +55,7 @@ export class DesktopWalker {
             "border:1px solid #ff3cac;box-shadow:0 0 12px #ff3cac66";
         d.innerHTML = "<b style='color:#00e5ff'>PIXEL 84</b><br>WASD / flechas: caminar · Shift: correr<br>" +
             "Arrastrar el mouse: mirar<br>Clic: usar / agarrar · Clic con algo en la mano: lanzar, disparar, golpear<br>" +
-            "Q: soltar lo que tienes · Arrastra la palanca de la rueda hacia abajo<br><span style='opacity:.7'>H: ocultar esta ayuda</span>";
+            "Q: soltar lo que tienes · Arrastra la palanca de la rueda hacia abajo<br>Premio en la mano: clic derecho + arrastrar o rueda del mouse para girarlo<br><span style='opacity:.7'>H: ocultar esta ayuda</span>";
         document.body.appendChild(d);
         this.hud = d;
     }
