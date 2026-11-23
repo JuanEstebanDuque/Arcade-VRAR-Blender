@@ -2,6 +2,9 @@
 
 Arcade ochentero en Realidad Virtual hecho con Blender + Needle Engine (WebXR).
 
+- **Jugar (PC o Meta Quest):** https://pixel84-arcade-1nxw5w1z5iy2-1uqoc0.needle.run/
+- **Equipo:** Juan Esteban Duque Taborda (arte 3D y escena) · Sebastián Escobar Marín (integración y publicación)
+
 ## Estructura
 - `Arcade.blend`: escena en Blender (1 unidad = 1 m). Al guardar (Ctrl+S) se exporta sola a `web/assets/scene.glb`.
 - `blender_scripts/build_scene.py`: genera **toda** la escena desde cero. Usa `lib.py` (utilidades de modelado). OJO: borra lo que haya en la escena antes de construir.
@@ -12,6 +15,8 @@ Arcade ochentero en Realidad Virtual hecho con Blender + Needle Engine (WebXR).
 - `blender_scripts/render_previews.py`: renders de revisión que quedan en `renders/`.
 - `textures/`: texturas originales (sin derechos de terceros).
 - `web/`: proyecto Needle Engine. La lógica está en `web/src/scripts/arcade/`.
+- `Images/`: material del Behance (capturas de los juegos, horneado, optimización, videos antes/después y video del profe en el visor).
+- `Images/behance/`: video POV de 2 min, clips y GIF de las interacciones, QR, portada e imágenes de referencia del caso de estudio.
 
 ## Convenciones de nombres (el código las lee: no los cambien sin avisar)
 | Nombre en Blender | Qué hace en la web |
@@ -36,5 +41,9 @@ Arcade ochentero en Realidad Virtual hecho con Blender + Needle Engine (WebXR).
 - [x] Escena detallada, sistema de tickets persistente, teletransporte
 - [x] Rueda Cósmica (palanca arrastrable), topo, galería de tiro, nevera, canje de premios, maquinitas jugables
 - [x] Caminar en PC (WASD + arrastrar para mirar) y agarrar/usar/soltar en PC y VR
-- [ ] Ajustar el lanzamiento del balón en el basket
+- [x] Mini basket con física (lanzamiento con ayuda de puntería)
 - [x] Optimización: modo low-poly, mallas estáticas unidas y luz horneada (lightmap 2048). Ver `renders/optimizacion/`
+- [x] Ajustes tras la prueba en Quest: pistolas y mazos orientados con el control, menos caída de FPS al disparar, escena dividida en 6 zonas para no dibujar lo que no se ve
+- [x] Contador de tickets fijo (PC y VR), carteles "¡TÓCALA!" en las maquinitas y pantalla de bienvenida bloqueante de 10 s
+- [x] Premios canjeados van directo a la mano (PC y VR) y se pueden girar (PC: clic derecho + arrastrar / rueda; VR: joystick)
+- [x] Publicado en Needle Cloud

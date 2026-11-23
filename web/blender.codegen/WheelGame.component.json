@@ -1,0 +1,19 @@
+{
+	"WheelGame": {
+		"setup": {
+			"type": "fn"
+		},
+		"onPointerClick": {
+			"type": "fn"
+		},
+		"onUpdateXR": {
+			"type": "fn"
+		},
+		"pull": {
+			"type": "fn"
+		},
+		"update": {
+			"type": "fn"
+		}
+	}
+}
